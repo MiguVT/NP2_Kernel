@@ -1,6 +1,6 @@
 # Nothing Phone 2 Kernel Builder
 
-[![Build Kernel](https://github.com/MiguVT/NP2_Kernel/actions/workflows/build.yml/badge.svg)](https://github.com/NP2_Kernel/kernel_nothing_sm8475_github_actions/actions/workflows/build.yml)
+[![Build Kernel](https://github.com/MiguVT/NP2_Kernel/actions/workflows/build.yml/badge.svg)](https://github.com/MiguVT/NP2_Kernel/actions/workflows/build.yml)
 ![Android 12+](https://img.shields.io/badge/Android-12+-green?logo=android)
 ![Kernel 5.10](https://img.shields.io/badge/Kernel-5.10-blue)
 ![KernelSU-Next](https://img.shields.io/badge/KernelSU--Next-v3.0+-orange)
