@@ -815,7 +815,7 @@ jobs:
           
           # Build GKI URL with fallback
           PRIMARY_URL="https://dl.google.com/android/gki/gki-certified-boot-android${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}-${{ env.OS_PATCH_LEVEL }}_r1.zip"
-          FALLBACK_URL="https://dl.google.com/android/gki/gki-certified-boot-android${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}-2025-01_r1.zip"
+          FALLBACK_URL="https://dl.google.com/android/gki/gki-certified-boot-android${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}-2025-12_r1.zip"
           
           echo "::group::Download GKI Boot Image"
           echo "Trying: $PRIMARY_URL"
