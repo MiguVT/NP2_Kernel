@@ -2,7 +2,7 @@
 # Nothing Phone 2 Kernel Build Workflow
 # =============================================================================
 # Production-grade, maintainable workflow for building kernel with
-# KernelSU-Next and SUSFS4KSU integration.
+# Wild_KSU and SUSFS4KSU integration.
 #
 # Key Features:
 #   - All configuration centralized in env block (no scattered values)
@@ -13,8 +13,12 @@
 #
 # Sources:
 #   - Kernel: https://github.com/MiguVT/kernel_nothing_sm8475_cleaned
-#   - KernelSU-Next: https://github.com/KernelSU-Next/KernelSU-Next (v3.0.1+)
+#   - Wild_KSU: https://github.com/WildKernels/Wild_KSU (wild-susfs branch)
 #   - SUSFS: https://gitlab.com/simonpunk/susfs4ksu (v2.0.0+)
+#
+# Note: Even when using wild-susfs branch, manual SUSFS kernel patches are
+# still required. The setup script integrates the KSU component, NOT the
+# kernel modifications.
 #
 # Last Updated: January 2026
 # =============================================================================
@@ -35,12 +39,12 @@ on:
         type: string
         default: '2025-12'
       ksu_version:
-        description: 'KernelSU-Next version (tag/commit, empty for latest)'
+        description: 'Wild_KSU version (tag/commit, empty for latest)'
         required: false
         type: string
         default: ''
       enable_kernelsu:
-        description: 'Enable KernelSU-Next integration'
+        description: 'Enable Wild_KSU integration'
         required: false
         type: boolean
         default: true
@@ -100,7 +104,7 @@ env:
   # Kernel Source Configuration
   # ---------------------------------------------------------------------------
   KERNEL_REPO: 'https://github.com/MiguVT/kernel_nothing_sm8475_cleaned.git'
-  KERNEL_DEFCONFIG: 'vendor/meteoric_defconfig'  # FIX #1: Correct defconfig for Nothing Phone 2 (Pong)
+  KERNEL_DEFCONFIG: 'vendor/meteoric_defconfig'
   
   # ---------------------------------------------------------------------------
   # Target Device Information
@@ -116,11 +120,13 @@ env:
   KERNEL_VERSION: '5.10'
   
   # ---------------------------------------------------------------------------
-  # KernelSU-Next Configuration
+  # Wild_KSU Configuration (based on wild-susfs branch)
   # ---------------------------------------------------------------------------
-  KSU_SETUP_URL: 'https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh'
-  KSU_REPO_URL: 'https://github.com/KernelSU-Next/KernelSU-Next'
-  KSU_BRANCH: 'next'
+  # Note: wild-susfs branch has SUSFS base integration but kernel patches
+  # still need to be applied manually from the SUSFS repository
+  WILD_KSU_SETUP_URL: 'https://raw.githubusercontent.com/WildKernels/Wild_KSU/wild/kernel/setup.sh'
+  WILD_KSU_REPO_URL: 'https://github.com/WildKernels/Wild_KSU'
+  WILD_KSU_BRANCH: 'wild-susfs'
   
   # ---------------------------------------------------------------------------
   # SUSFS Configuration
@@ -155,7 +161,7 @@ jobs:
 
     steps:
       # ========================================================================
-      # PHASE 0: BUILD CACHE (FIX #7)
+      # PHASE 0: BUILD CACHE
       # ========================================================================
       
       - name: Setup Build Cache
@@ -240,10 +246,10 @@ jobs:
             llvm \
             lld \
             gcc-aarch64-linux-gnu \
-            ccache  # FIX #7: Add ccache for build caching
+            ccache
           echo "::endgroup::"
           
-          # FIX #7: Configure ccache
+          # Configure ccache
           mkdir -p ~/.ccache
           echo "max_size = 5G" > ~/.ccache/ccache.conf
           echo "compression = true" >> ~/.ccache/ccache.conf
@@ -317,7 +323,6 @@ jobs:
           
           echo "✅ Kernel source cloned: v$KERNEL_FULL_VERSION (branch: ${{ env.KERNEL_BRANCH }})"
 
-      # FIX #4: Validate defconfig exists before proceeding
       - name: Validate Kernel Defconfig Exists
         run: |
           KERNEL_DIR="$GITHUB_WORKSPACE/kernel"
@@ -340,28 +345,29 @@ jobs:
           fi
           echo "::endgroup::"
 
-      - name: Setup KernelSU-Next
+      - name: Setup Wild_KSU
         if: inputs.enable_kernelsu != false
         run: |
           cd "$GITHUB_WORKSPACE/kernel"
           
-          echo "::group::Running KernelSU-Next Setup"
-          # Run official setup script with optional version
+          echo "::group::Running Wild_KSU Setup"
+          # Use wild-susfs branch which has SUSFS base integration
+          # Note: This integrates the KSU component, but kernel patches still need manual application
           KSU_ARG="${{ inputs.ksu_version }}"
           if [ -n "$KSU_ARG" ]; then
-            echo "Installing KernelSU-Next version: $KSU_ARG"
-            curl -LSs "${{ env.KSU_SETUP_URL }}" | bash -s "$KSU_ARG"
+            echo "Installing Wild_KSU version: $KSU_ARG"
+            curl -LSs "${{ env.WILD_KSU_SETUP_URL }}" | bash -s "$KSU_ARG"
           else
-            echo "Installing latest KernelSU-Next"
-            curl -LSs "${{ env.KSU_SETUP_URL }}" | bash -
+            echo "Installing Wild_KSU with wild-susfs branch"
+            curl -LSs "${{ env.WILD_KSU_SETUP_URL }}" | bash -s wild-susfs
           fi
           echo "::endgroup::"
           
-          # FIX #3: Robust KSU directory detection - check all possible locations
+          # Robust KSU directory detection - check all possible locations
           KSU_DIR=""
-          if [ -d "KernelSU-Next" ]; then
-            KSU_DIR="KernelSU-Next"
-            echo "✅ Found KernelSU-Next directory structure"
+          if [ -d "Wild_KSU" ]; then
+            KSU_DIR="Wild_KSU"
+            echo "✅ Found Wild_KSU directory structure"
           elif [ -d "KernelSU" ]; then
             KSU_DIR="KernelSU"
             echo "✅ Found KernelSU directory structure"
@@ -369,14 +375,14 @@ jobs:
             KSU_DIR="drivers/kernelsu"
             echo "✅ Found integrated KernelSU structure (drivers/kernelsu)"
           else
-            echo "❌ KernelSU directory not found after setup"
+            echo "❌ KSU directory not found after setup"
             echo "::group::Debug: Directory contents"
-            find . -maxdepth 2 -type d -name "*kernel*" -o -name "*ksu*" 2>/dev/null | head -20
+            find . -maxdepth 2 -type d -name "*kernel*" -o -name "*ksu*" -o -name "*wild*" 2>/dev/null | head -20
             echo "::endgroup::"
             exit 1
           fi
           
-          # Extract version information - works with any structure
+          # Extract version information
           cd "$GITHUB_WORKSPACE/kernel"
           if [ -d "$KSU_DIR/.git" ]; then
             cd "$KSU_DIR"
@@ -391,14 +397,14 @@ jobs:
           echo "KSU_DIR=$KSU_DIR" >> "$GITHUB_ENV"
           echo "KSU_VERSION=$KSU_VERSION" >> "$GITHUB_ENV"
           echo "KSU_COMMIT=$KSU_COMMIT" >> "$GITHUB_ENV"
-          echo "✅ KernelSU-Next: $KSU_VERSION ($KSU_COMMIT) at $KSU_DIR"
+          echo "✅ Wild_KSU: $KSU_VERSION ($KSU_COMMIT) at $KSU_DIR"
           
           # Validate integration
           cd "$GITHUB_WORKSPACE/kernel"
-          if grep -q "KernelSU" Makefile 2>/dev/null || [ -f "drivers/kernelsu/Makefile" ] || [ -f "$KSU_DIR/kernel/Makefile" ]; then
-            echo "✅ KernelSU integration verified"
+          if grep -q "KernelSU\|Wild_KSU" Makefile 2>/dev/null || [ -f "drivers/kernelsu/Makefile" ] || [ -f "$KSU_DIR/kernel/Makefile" ]; then
+            echo "✅ Wild_KSU integration verified"
           else
-            echo "⚠️ KernelSU integration could not be verified in Makefile"
+            echo "⚠️ Wild_KSU integration could not be verified in Makefile"
           fi
 
       - name: Clone SUSFS
@@ -412,7 +418,7 @@ jobs:
           
           cd "$GITHUB_WORKSPACE/susfs"
           
-          # FIX #5: Multi-source version detection for SUSFS
+          # Multi-source version detection for SUSFS
           SUSFS_VERSION=""
           
           # Try: Check version file first
@@ -569,7 +575,7 @@ jobs:
             } >> "$DEFCONFIG"
           fi
           
-          # FIX #2: SUSFS Configuration - corrected options for gki-android12-5.10 branch
+          # SUSFS Configuration - corrected options for gki-android12-5.10 branch
           if [ "${{ inputs.enable_kernelsu }}" != "false" ] && [ "${{ inputs.enable_susfs }}" != "false" ]; then
             {
               echo ""
@@ -590,7 +596,7 @@ jobs:
             } >> "$DEFCONFIG"
           fi
           
-          # FIX #8: Networking Configuration (OPTIONAL - not required for KSU/SUSFS)
+          # Networking Configuration (OPTIONAL - not required for KSU/SUSFS)
           # Uncomment the block below to enable BBR congestion control + FQ qdisc
           # These improve network performance but are not critical for root functionality
           #
@@ -637,7 +643,7 @@ jobs:
           cd "$GITHUB_WORKSPACE/kernel"
           
           # Common make arguments
-          # FIX #7: Added ccache for faster rebuilds
+          # Added ccache for faster rebuilds
           MAKE_ARGS=(
             "ARCH=${{ env.ARCH }}"
             "CROSS_COMPILE=${{ env.CROSS_COMPILE }}"
@@ -682,7 +688,7 @@ jobs:
           
           echo "✅ Kernel build completed"
 
-      # FIX #6: Validate critical kernel options are actually enabled
+      # Validate critical kernel options are actually enabled
       - name: Validate Critical Kernel Options
         if: inputs.enable_kernelsu != false
         run: |
@@ -833,7 +839,7 @@ jobs:
           SUSFS_PART=""
           
           if [ "${{ inputs.enable_kernelsu }}" != "false" ]; then
-            KSU_PART="-KSU-Next-${{ env.KSU_VERSION }}"
+            KSU_PART="-Wild_KSU-${{ env.KSU_VERSION }}"
           fi
           
           if [ "${{ inputs.enable_kernelsu }}" != "false" ] && [ "${{ inputs.enable_susfs }}" != "false" ]; then
@@ -860,7 +866,7 @@ jobs:
             echo ''
             echo '## AnyKernel setup'
             echo "properties() { '"
-            echo 'kernel.string=Nothing Phone 2 Kernel with KernelSU-Next + SUSFS'
+            echo 'kernel.string=Nothing Phone 2 Kernel with Wild_KSU + SUSFS'
             echo 'do.devicecheck=1'
             echo 'do.modules=0'
             echo 'do.systemless=1'
@@ -921,7 +927,7 @@ jobs:
             echo "Security Patch: ${{ env.OS_PATCH_LEVEL }}"
             echo ""
             echo "## Components"
-            echo "KernelSU-Next: ${{ env.KSU_VERSION }} (${{ env.KSU_COMMIT }})"
+            echo "Wild_KSU: ${{ env.KSU_VERSION }} (${{ env.KSU_COMMIT }})"
             echo "SUSFS: ${{ env.SUSFS_VERSION }} (${{ env.SUSFS_COMMIT }})"
             echo ""
             echo "## Build"
@@ -931,7 +937,7 @@ jobs:
             echo ""
             echo "## Sources"
             echo "Kernel: ${{ env.KERNEL_REPO }}"
-            echo "KernelSU-Next: ${{ env.KSU_REPO_URL }}"
+            echo "Wild_KSU: ${{ env.WILD_KSU_REPO_URL }}"
             echo "SUSFS: ${{ env.SUSFS_REPO }}"
           } > "$GITHUB_WORKSPACE/output/build-info.txt"
           
@@ -1020,7 +1026,7 @@ jobs:
             echo "## 🔧 Components"
             echo "| Component | Version | Commit | Status |"
             echo "|-----------|---------|--------|--------|"
-            echo "| **KernelSU-Next** | ${{ env.KSU_VERSION }} | \`${{ env.KSU_COMMIT }}\` | ${{ inputs.enable_kernelsu != false && '✅ Enabled' || '⏸️ Disabled' }} |"
+            echo "| **Wild_KSU** | ${{ env.KSU_VERSION }} | \`${{ env.KSU_COMMIT }}\` | ${{ inputs.enable_kernelsu != false && '✅ Enabled' || '⏸️ Disabled' }} |"
             echo "| **SUSFS** | ${{ env.SUSFS_VERSION }} | \`${{ env.SUSFS_COMMIT }}\` | ${{ inputs.enable_susfs != false && inputs.enable_kernelsu != false && '✅ Enabled' || '⏸️ Disabled' }} |"
             echo ""
             echo "## ⚙️ Build Configuration"
@@ -1042,7 +1048,7 @@ jobs:
             echo ""
             echo "## 🔗 Source Repositories"
             echo "- [Kernel Source](${{ env.KERNEL_REPO }})"
-            echo "- [KernelSU-Next](${{ env.KSU_REPO_URL }})"
+            echo "- [Wild_KSU](${{ env.WILD_KSU_REPO_URL }})"
             echo "- [SUSFS](${{ env.SUSFS_REPO }})"
             echo ""
             echo "---"
