@@ -33,7 +33,7 @@ on:
         description: 'Security patch level (YYYY-MM format)'
         required: false
         type: string
-        default: '2025-01'
+        default: '2025-12'
       ksu_version:
         description: 'KernelSU-Next version (tag/commit, empty for latest)'
         required: false
@@ -67,7 +67,7 @@ on:
       os_patch_level:
         required: false
         type: string
-        default: '2025-01'
+        default: '2025-12'
       ksu_version:
         required: false
         type: string
@@ -182,7 +182,7 @@ jobs:
           echo "📱 Android Version: ${{ env.ANDROID_VERSION }}"
           echo "🐧 Kernel Version: ${{ env.KERNEL_VERSION }}"
           echo "🌿 Kernel Branch: ${{ inputs.kernel_branch || 'clean' }}"
-          echo "🔐 Security Patch: ${{ inputs.os_patch_level || '2025-01' }}"
+          echo "🔐 Security Patch: ${{ inputs.os_patch_level || '2025-12' }}"
           echo "🔑 KernelSU: ${{ inputs.enable_kernelsu && 'Enabled' || 'Disabled' }}"
           echo "🛡️ SUSFS: ${{ inputs.enable_susfs && 'Enabled' || 'Disabled' }}"
           echo "⚙️ Build Type: ${{ inputs.build_type || 'release' }}"
@@ -190,7 +190,7 @@ jobs:
           
           # Set computed variables
           echo "KERNEL_BRANCH=${{ inputs.kernel_branch || 'clean' }}" >> "$GITHUB_ENV"
-          echo "OS_PATCH_LEVEL=${{ inputs.os_patch_level || '2025-01' }}" >> "$GITHUB_ENV"
+          echo "OS_PATCH_LEVEL=${{ inputs.os_patch_level || '2025-12' }}" >> "$GITHUB_ENV"
           echo "ENABLE_KSU=${{ inputs.enable_kernelsu }}" >> "$GITHUB_ENV"
           echo "ENABLE_SUSFS=${{ inputs.enable_susfs }}" >> "$GITHUB_ENV"
           echo "BUILD_TYPE=${{ inputs.build_type || 'release' }}" >> "$GITHUB_ENV"
@@ -762,7 +762,7 @@ jobs:
           
           # Build GKI URL with fallback
           PRIMARY_URL="https://dl.google.com/android/gki/gki-certified-boot-android${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}-${{ env.OS_PATCH_LEVEL }}_r1.zip"
-          FALLBACK_URL="https://dl.google.com/android/gki/gki-certified-boot-android${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}-2023-01_r1.zip"
+          FALLBACK_URL="https://dl.google.com/android/gki/gki-certified-boot-android${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}-2025-01_r1.zip"
           
           echo "::group::Download GKI Boot Image"
           echo "Trying: $PRIMARY_URL"
@@ -772,7 +772,7 @@ jobs:
           else
             echo "⚠️ Primary URL failed, trying fallback..."
             if curl -sfL -o gki-boot.zip "$FALLBACK_URL" --retry 3 --retry-delay 5; then
-              echo "✅ Downloaded fallback GKI boot image (2023-01)"
+              echo "✅ Downloaded fallback GKI boot image (2025-01)"
             else
               echo "❌ Failed to download GKI boot image"
               exit 1

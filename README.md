@@ -44,7 +44,7 @@ Check the [Releases](../../releases) page for ready-to-flash builds.
 
 3. **Click "Run workflow"** and configure:
    - `kernel_branch`: Source branch (default: `clean`)
-   - `os_patch_level`: Security patch date, e.g., `2025-01`
+   - `os_patch_level`: Security patch date, e.g., `2025-12`
    - `enable_kernelsu`: Toggle KernelSU-Next (default: ✅)
    - `enable_susfs`: Toggle SUSFS hiding (default: ✅)
    - `build_type`: `release` or `debug`
@@ -114,7 +114,7 @@ fastboot reboot
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `kernel_branch` | string | `clean` | Kernel source branch to build |
-| `os_patch_level` | string | `2025-01` | Android security patch level (YYYY-MM) |
+| `os_patch_level` | string | `2025-12` | Android security patch level (YYYY-MM) |
 | `ksu_version` | string | _(latest)_ | Specific KernelSU-Next version/commit |
 | `enable_kernelsu` | boolean | `true` | Include KernelSU-Next in build |
 | `enable_susfs` | boolean | `true` | Include SUSFS root hiding |
