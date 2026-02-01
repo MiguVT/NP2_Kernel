@@ -1,9 +1,9 @@
 # Nothing Phone 2 Kernel Builder
 
 [![Build Kernel](https://github.com/MiguVT/NP2_Kernel/actions/workflows/build.yml/badge.svg)](https://github.com/MiguVT/NP2_Kernel/actions/workflows/build.yml)
-![Android 12+](https://img.shields.io/badge/Android-12+-green?logo=android)
-![Kernel 5.10](https://img.shields.io/badge/Kernel-5.10-blue)
-![WildKSU](https://img.shields.io/badge/WildKSU-3.0.0-orange)
+[![Android 12+](https://img.shields.io/badge/Android-12+-green?logo=android)](https://developer.android.com/about/versions/12)
+[![Kernel 5.10](https://img.shields.io/badge/Kernel-5.10-blue)](https://www.kernel.org/)
+[![WildKSU](https://img.shields.io/badge/WildKSU-3.0.0-orange)](https://github.com/WildKernels/Wild_KSU)
 
 Automated GitHub Actions workflow that builds a custom kernel for **Nothing Phone 2 (Pong)** based on [Meteoric Kernel Cleaned](https://github.com/MiguVT/kernel_nothing_sm8475_cleaned), a fork based on [Meteoric Kernel](https://github.com/HELLBOY017/kernel_nothing_sm8475) but without the manual modification, allowing us to integrate [WildKSU](https://github.com/WildKernels/Wild_KSU) root solution and SUSFS root hiding baked right in.
 
