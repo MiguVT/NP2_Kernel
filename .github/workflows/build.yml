@@ -20,7 +20,7 @@
 # still required. The setup script integrates the KSU component, NOT the
 # kernel modifications.
 #
-# Last Updated: January 2026
+# Last Updated: February 2026
 # =============================================================================
 
 name: Build Nothing Phone 2 Kernel
@@ -152,6 +152,11 @@ env:
   # AnyKernel3 Configuration
   # ---------------------------------------------------------------------------
   ANYKERNEL_REPO: 'https://github.com/osm0sis/AnyKernel3.git'
+  
+  # ---------------------------------------------------------------------------
+  # GKI Fallback Configuration
+  # ---------------------------------------------------------------------------
+  GKI_FALLBACK_PATCH_LEVEL: '2025-12'
 
 jobs:
   build:
@@ -815,7 +820,7 @@ jobs:
           
           # Build GKI URL with fallback
           PRIMARY_URL="https://dl.google.com/android/gki/gki-certified-boot-android${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}-${{ env.OS_PATCH_LEVEL }}_r1.zip"
-          FALLBACK_URL="https://dl.google.com/android/gki/gki-certified-boot-android${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}-2025-12_r1.zip"
+          FALLBACK_URL="https://dl.google.com/android/gki/gki-certified-boot-android${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}-${{ env.GKI_FALLBACK_PATCH_LEVEL }}_r1.zip"
           
           echo "::group::Download GKI Boot Image"
           echo "Trying: $PRIMARY_URL"
@@ -825,7 +830,7 @@ jobs:
           else
             echo "⚠️ Primary URL failed, trying fallback..."
             if curl -sfL -o gki-boot.zip "$FALLBACK_URL" --retry 3 --retry-delay 5; then
-              echo "✅ Downloaded fallback GKI boot image (2025-01)"
+              echo "✅ Downloaded fallback GKI boot image (${{ env.GKI_FALLBACK_PATCH_LEVEL }})"
             else
               echo "❌ Failed to download GKI boot image"
               exit 1
