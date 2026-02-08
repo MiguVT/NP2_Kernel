@@ -1,5 +1,5 @@
 # =============================================================================
-# Nothing Phone 2 Kernel Build Workflow
+# Nothing Phone 2 Kernel Build Workflow - Meteoric workflow
 # =============================================================================
 # Production-grade, maintainable workflow for building kernel with
 # Wild_KSU and SUSFS4KSU integration.
