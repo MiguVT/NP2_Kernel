@@ -23,7 +23,7 @@
 # Last Updated: February 2026
 # =============================================================================
 
-name: Build Nothing Phone 2 Kernel
+name: Build Nothing Phone 2 Kernel - Ryuusei
 
 on:
   workflow_dispatch:
