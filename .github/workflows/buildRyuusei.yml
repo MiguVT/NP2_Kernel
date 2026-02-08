@@ -32,7 +32,7 @@ on:
         description: 'Kernel source branch'
         required: false
         type: string
-        default: 'bka'
+        default: 'ryuusei-base'
       os_patch_level:
         description: 'Security patch level (YYYY-MM format)'
         required: false
@@ -103,7 +103,7 @@ env:
   # ---------------------------------------------------------------------------
   # Kernel Source Configuration
   # ---------------------------------------------------------------------------
-  KERNEL_REPO: 'https://github.com/Evolution-X-Devices/kernel_nothing_sm8475.git'
+  KERNEL_REPO: 'https://github.com/MiguVT/kernel_nothing_sm8475_ryuusei.git'
   KERNEL_DEFCONFIG: 'vendor/ryuusei_defconfig'
   
   # ---------------------------------------------------------------------------
