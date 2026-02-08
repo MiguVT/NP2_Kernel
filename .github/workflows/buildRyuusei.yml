@@ -32,7 +32,7 @@ on:
         description: 'Kernel source branch'
         required: false
         type: string
-        default: 'clean'
+        default: 'bka'
       os_patch_level:
         description: 'Security patch level (YYYY-MM format)'
         required: false
