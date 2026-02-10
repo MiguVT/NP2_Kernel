@@ -1,6 +1,6 @@
 # Nothing Phone 2 Kernel Builder
 
-[![Build Kernel](https://github.com/MiguVT/NP2_Kernel/actions/workflows/build.yml/badge.svg)](https://github.com/MiguVT/NP2_Kernel/actions/workflows/build.yml)
+[![Build Kernel](https://github.com/MiguVT/NP2_Kernel/actions/workflows/buildRyuusei.yml/badge.svg)](https://github.com/MiguVT/NP2_Kernel/actions/workflows/buildRyuusei.yml)
 [![Android 12+](https://img.shields.io/badge/Android-12+-green?logo=android)](https://developer.android.com/about/versions/12)
 [![Kernel 5.10](https://img.shields.io/badge/Kernel-5.10-blue)](https://www.kernel.org/)
 [![WildKSU](https://img.shields.io/badge/WildKSU-3.0.0-orange)](https://github.com/WildKernels/Wild_KSU)
