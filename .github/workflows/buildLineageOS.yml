@@ -51,6 +51,10 @@ on:
           - debug
         default: 'release'
 
+permissions:
+  contents: write
+  actions: write
+
 jobs:
   build-lineageos:
     name: Build LineageOS Kernel
