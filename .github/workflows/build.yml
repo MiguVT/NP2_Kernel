@@ -1,18 +1,22 @@
 # =============================================================================
-# Nothing Phone 2 Kernel Build Workflow - Meteoric workflow
+# Nothing Phone 2 Kernel Build Workflow - Unified
 # =============================================================================
 # Production-grade, maintainable workflow for building kernel with
 # Wild_KSU and SUSFS4KSU integration.
 #
 # Key Features:
 #   - All configuration centralized in env block (no scattered values)
+#   - Supports any kernel source via kernel_repo and kernel_defconfig inputs
 #   - Modular enable/disable for KSU and SUSFS via inputs
 #   - Comprehensive error handling and validation
 #   - Clean artifact naming with version information
 #   - Detailed build summary with all component versions
 #
+# Preset examples:
+#   LineageOS: repo=LineageOS/android_kernel_nothing_sm8475 defconfig=gki_defconfig  branch=lineage-23.2
+#              extra_configs="vendor/waipio_GKI.config vendor/nothing/waipio_GKI.config vendor/debugfs.config"
+#
 # Sources:
-#   - Kernel: https://github.com/MiguVT/kernel_nothing_sm8475_cleaned
 #   - Wild_KSU: https://github.com/WildKernels/Wild_KSU (wild-susfs branch)
 #   - SUSFS: https://gitlab.com/simonpunk/susfs4ksu (v2.0.0+)
 #
@@ -23,16 +27,31 @@
 # Last Updated: February 2026
 # =============================================================================
 
-name: Build Nothing Phone 2 Kernel - Meteoric
+name: Build Nothing Phone 2 Kernel
 
 on:
   workflow_dispatch:
     inputs:
+      kernel_repo:
+        description: 'Kernel source repository URL'
+        required: false
+        type: string
+        default: 'https://github.com/MiguVT/kernel_nothing_sm8475_cleaned.git'
+      kernel_defconfig:
+        description: 'Defconfig path (e.g. vendor/meteoric_defconfig)'
+        required: false
+        type: string
+        default: 'vendor/meteoric_defconfig'
       kernel_branch:
         description: 'Kernel source branch'
         required: false
         type: string
         default: 'clean'
+      extra_configs:
+        description: 'Extra config fragments to merge (space-separated, relative to arch/arm64/configs/)'
+        required: false
+        type: string
+        default: ''
       os_patch_level:
         description: 'Security patch level (YYYY-MM format)'
         required: false
@@ -64,10 +83,22 @@ on:
 
   workflow_call:
     inputs:
+      kernel_repo:
+        required: false
+        type: string
+        default: 'https://github.com/MiguVT/kernel_nothing_sm8475_cleaned.git'
+      kernel_defconfig:
+        required: false
+        type: string
+        default: 'vendor/meteoric_defconfig'
       kernel_branch:
         required: false
         type: string
         default: 'clean'
+      extra_configs:
+        required: false
+        type: string
+        default: ''
       os_patch_level:
         required: false
         type: string
@@ -100,12 +131,6 @@ permissions:
 # the build without touching the workflow logic below.
 # =============================================================================
 env:
-  # ---------------------------------------------------------------------------
-  # Kernel Source Configuration
-  # ---------------------------------------------------------------------------
-  KERNEL_REPO: 'https://github.com/MiguVT/kernel_nothing_sm8475_cleaned.git'
-  KERNEL_DEFCONFIG: 'vendor/meteoric_defconfig'
-  
   # ---------------------------------------------------------------------------
   # Target Device Information
   # ---------------------------------------------------------------------------
@@ -193,13 +218,19 @@ jobs:
           echo "📱 Android Version: ${{ env.ANDROID_VERSION }}"
           echo "🐧 Kernel Version: ${{ env.KERNEL_VERSION }}"
           echo "🌿 Kernel Branch: ${{ inputs.kernel_branch || 'clean' }}"
-          echo "🔐 Security Patch: ${{ inputs.os_patch_level || '2025-12' }}"
+          echo "📂 Kernel Repo: ${{ inputs.kernel_repo || 'https://github.com/MiguVT/kernel_nothing_sm8475_cleaned.git' }}"
+          echo "📋 Defconfig: ${{ inputs.kernel_defconfig || 'vendor/meteoric_defconfig' }}"
+          echo "� Extra Configs: ${{ inputs.extra_configs || 'none' }}"
+          echo "�🔐 Security Patch: ${{ inputs.os_patch_level || '2025-12' }}"
           echo "🔑 KernelSU: ${{ inputs.enable_kernelsu && 'Enabled' || 'Disabled' }}"
           echo "🛡️ SUSFS: ${{ inputs.enable_susfs && 'Enabled' || 'Disabled' }}"
           echo "⚙️ Build Type: ${{ inputs.build_type || 'release' }}"
           echo "::endgroup::"
           
           # Set computed variables
+          echo "KERNEL_REPO=${{ inputs.kernel_repo || 'https://github.com/MiguVT/kernel_nothing_sm8475_cleaned.git' }}" >> "$GITHUB_ENV"
+          echo "KERNEL_DEFCONFIG=${{ inputs.kernel_defconfig || 'vendor/meteoric_defconfig' }}" >> "$GITHUB_ENV"
+          echo "EXTRA_CONFIGS=${{ inputs.extra_configs }}" >> "$GITHUB_ENV"
           echo "KERNEL_BRANCH=${{ inputs.kernel_branch || 'clean' }}" >> "$GITHUB_ENV"
           echo "OS_PATCH_LEVEL=${{ inputs.os_patch_level || '2025-12' }}" >> "$GITHUB_ENV"
           echo "ENABLE_KSU=${{ inputs.enable_kernelsu }}" >> "$GITHUB_ENV"
@@ -709,6 +740,24 @@ jobs:
           make -j"$(nproc)" O=out "${MAKE_ARGS[@]}" "${{ env.KERNEL_DEFCONFIG }}"
           echo "::endgroup::"
           
+          # Merge extra config fragments if provided
+          if [ -n "${{ env.EXTRA_CONFIGS }}" ]; then
+            echo "::group::Merge Extra Config Fragments"
+            CONFIGS_DIR="arch/${{ env.ARCH }}/configs"
+            for frag in ${{ env.EXTRA_CONFIGS }}; do
+              FRAG_PATH="$CONFIGS_DIR/$frag"
+              if [ -f "$FRAG_PATH" ]; then
+                echo "Merging: $frag"
+                ARCH=${{ env.ARCH }} scripts/kconfig/merge_config.sh -m -O out out/.config "$FRAG_PATH"
+              else
+                echo "⚠️ Config fragment not found: $FRAG_PATH"
+              fi
+            done
+            # Resolve dependencies after merging
+            make -j"$(nproc)" O=out "${MAKE_ARGS[@]}" olddefconfig
+            echo "::endgroup::"
+          fi
+          
           # Validate critical config options
           echo "::group::Validate Configuration"
           CONFIG_FILE="out/.config"
@@ -882,9 +931,10 @@ jobs:
             fi
             
             # Sign with avbtool - use python3 explicitly
+            # Partition size must match BOARD_BOOTIMAGE_PARTITION_SIZE (96 MB)
             python3 "$AVBTOOL" add_hash_footer \
               --partition_name boot \
-              --partition_size $((64 * 1024 * 1024)) \
+              --partition_size $((96 * 1024 * 1024)) \
               --image "$output" \
               --algorithm SHA256_RSA2048 \
               --key "$BOOT_SIGN_KEY"
@@ -1001,6 +1051,8 @@ jobs:
             echo "## Kernel"
             echo "Version: ${{ env.KERNEL_FULL_VERSION }}"
             echo "Branch: ${{ env.KERNEL_BRANCH }}"
+            echo "Repo: ${{ env.KERNEL_REPO }}"
+            echo "Defconfig: ${{ env.KERNEL_DEFCONFIG }}"
             echo "Android: ${{ env.ANDROID_VERSION }}"
             echo "Security Patch: ${{ env.OS_PATCH_LEVEL }}"
             echo ""
@@ -1098,6 +1150,8 @@ jobs:
             echo "|----------|-------|"
             echo "| **Version** | ${{ env.KERNEL_FULL_VERSION }} |"
             echo "| **Branch** | ${{ env.KERNEL_BRANCH }} |"
+            echo "| **Repo** | ${{ env.KERNEL_REPO }} |"
+            echo "| **Defconfig** | ${{ env.KERNEL_DEFCONFIG }} |"
             echo "| **Android** | ${{ env.ANDROID_VERSION }} |"
             echo "| **Security Patch** | ${{ env.OS_PATCH_LEVEL }} |"
             echo ""

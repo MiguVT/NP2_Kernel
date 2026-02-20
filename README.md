@@ -1,11 +1,16 @@
 # Nothing Phone 2 Kernel Builder
 
-[![Build Kernel](https://github.com/MiguVT/NP2_Kernel/actions/workflows/buildRyuusei.yml/badge.svg)](https://github.com/MiguVT/NP2_Kernel/actions/workflows/buildRyuusei.yml)
+[![Build Kernel](https://github.com/MiguVT/NP2_Kernel/actions/workflows/build.yml/badge.svg)](https://github.com/MiguVT/NP2_Kernel/actions/workflows/build.yml)
 [![Android 12+](https://img.shields.io/badge/Android-12+-green?logo=android)](https://developer.android.com/about/versions/12)
 [![Kernel 5.10](https://img.shields.io/badge/Kernel-5.10-blue)](https://www.kernel.org/)
 [![WildKSU](https://img.shields.io/badge/WildKSU-3.0.0-orange)](https://github.com/WildKernels/Wild_KSU)
 
-Automated GitHub Actions workflow that builds a custom kernel for **Nothing Phone 2 (Pong)** based on [Meteoric Kernel Cleaned](https://github.com/MiguVT/kernel_nothing_sm8475_cleaned), a fork based on [Meteoric Kernel](https://github.com/HELLBOY017/kernel_nothing_sm8475) but without the manual modification, allowing us to integrate [WildKSU](https://github.com/WildKernels/Wild_KSU) root solution and SUSFS root hiding baked right in.
+Automated GitHub Actions workflow that builds a custom kernel for **Nothing Phone 2 (Pong)** with [WildKSU](https://github.com/WildKernels/Wild_KSU) root solution and SUSFS root hiding baked right in. Supports any compatible kernel source — just provide the repo URL and defconfig.
+
+Pre-configured presets:
+- **Meteoric** — [kernel_nothing_sm8475_cleaned](https://github.com/MiguVT/kernel_nothing_sm8475_cleaned) (`vendor/meteoric_defconfig`, branch `clean`)
+- **Ryuusei** — [kernel_nothing_sm8475_ryuusei](https://github.com/MiguVT/kernel_nothing_sm8475_ryuusei) (`vendor/ryuusei_defconfig`, branch `ryuusei-base`)
+- **LineageOS** — [android_kernel_nothing_sm8475](https://github.com/LineageOS/android_kernel_nothing_sm8475) (`gki_defconfig` + vendor config fragments, branch `lineage-23.2`)
 
 ---
 
@@ -27,7 +32,7 @@ Automated GitHub Actions workflow that builds a custom kernel for **Nothing Phon
 | Platform | SM8475 (Snapdragon 8+ Gen 1) |
 | Android | 12 (GKI) |
 | Kernel | 5.10.x |
-| Defconfig | `vendor/meteoric_defconfig` |
+| Defconfig | Configurable (default: `vendor/meteoric_defconfig`) |
 
 ---
 
@@ -43,7 +48,10 @@ Check the [Releases](../../releases) page for ready-to-flash builds.
 2. **Go to Actions tab** → Select "Build Nothing Phone 2 Kernel"
 
 3. **Click "Run workflow"** and configure:
+   - `kernel_repo`: Kernel source git URL (default: Meteoric cleaned)
+   - `kernel_defconfig`: Defconfig path, e.g., `vendor/meteoric_defconfig`
    - `kernel_branch`: Source branch (default: `clean`)
+   - `extra_configs`: Space-separated config fragments to merge (e.g., `vendor/waipio_GKI.config`)
    - `os_patch_level`: Security patch date, e.g., `2025-12`
    - `enable_kernelsu`: Toggle WildKSU (default: ✅)
    - `enable_susfs`: Toggle SUSFS hiding (default: ✅)
@@ -113,7 +121,10 @@ fastboot reboot
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
+| `kernel_repo` | string | `MiguVT/kernel_nothing_sm8475_cleaned` | Kernel source repository URL |
+| `kernel_defconfig` | string | `vendor/meteoric_defconfig` | Defconfig path relative to `arch/arm64/configs/` |
 | `kernel_branch` | string | `clean` | Kernel source branch to build |
+| `extra_configs` | string | _(empty)_ | Space-separated config fragments to merge after defconfig (relative to `arch/arm64/configs/`) |
 | `os_patch_level` | string | `2025-12` | Android security patch level (YYYY-MM) |
 | `ksu_version` | string | _(latest)_ | Specific WildKSU version/commit |
 | `enable_kernelsu` | boolean | `true` | Include WildKSU in build |
@@ -155,7 +166,8 @@ Edit the defconfig or modify the "Configure Kernel" step in the workflow to add 
 ## 🐛 Troubleshooting
 
 ### Build fails at defconfig step
-- Check that `vendor/meteoric_defconfig` exists in the kernel source
+- Check that the defconfig you specified exists in the kernel source
+- The workflow will list available defconfigs on failure
 - Verify the kernel branch is correct
 
 ### WildKSU not working after flash

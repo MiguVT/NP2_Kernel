@@ -1,0 +1,68 @@
+# =============================================================================
+# Nothing Phone 2 Kernel Build Preset - LineageOS
+# =============================================================================
+# Preset workflow that calls the unified build with LineageOS kernel config.
+#
+# Kernel: LineageOS/android_kernel_nothing_sm8475 (lineage-23.2)
+# Config: gki_defconfig + vendor/waipio_GKI.config +
+#         vendor/nothing/waipio_GKI.config + vendor/debugfs.config
+#
+# Reference: Evolution-X-Devices/device_nothing_Pong BoardConfig.mk
+#
+# Last Updated: February 2026
+# =============================================================================
+
+name: Build NP2 Kernel - LineageOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_branch:
+        description: 'LineageOS kernel branch'
+        required: false
+        type: string
+        default: 'lineage-23.2'
+      os_patch_level:
+        description: 'Security patch level (YYYY-MM format)'
+        required: false
+        type: string
+        default: '2025-12'
+      ksu_version:
+        description: 'Wild_KSU version (tag/commit, empty for latest)'
+        required: false
+        type: string
+        default: ''
+      enable_kernelsu:
+        description: 'Enable Wild_KSU integration'
+        required: false
+        type: boolean
+        default: true
+      enable_susfs:
+        description: 'Enable SUSFS root hiding (requires KernelSU)'
+        required: false
+        type: boolean
+        default: true
+      build_type:
+        description: 'Build type (affects optimizations)'
+        required: false
+        type: choice
+        options:
+          - release
+          - debug
+        default: 'release'
+
+jobs:
+  build-lineageos:
+    name: Build LineageOS Kernel
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    with:
+      kernel_repo: 'https://github.com/LineageOS/android_kernel_nothing_sm8475.git'
+      kernel_defconfig: 'gki_defconfig'
+      kernel_branch: ${{ inputs.kernel_branch || 'lineage-23.2' }}
+      extra_configs: 'vendor/waipio_GKI.config vendor/nothing/waipio_GKI.config vendor/debugfs.config'
+      os_patch_level: ${{ inputs.os_patch_level || '2025-12' }}
+      ksu_version: ${{ inputs.ksu_version || '' }}
+      enable_kernelsu: ${{ inputs.enable_kernelsu }}
+      enable_susfs: ${{ inputs.enable_susfs }}
+      build_type: ${{ inputs.build_type || 'release' }}
