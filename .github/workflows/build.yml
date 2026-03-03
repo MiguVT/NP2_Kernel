@@ -109,11 +109,21 @@ jobs:
           # Apply kernel patch
           patch -p1 < ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-android13-5.10.patch
 
-          # Ensure susfs.o compiles unconditionally (safety net for GKI builds)
+          # Safety net: force susfs.o into the build regardless of Kconfig resolution.
+          # The Configure step uses scripts/config to guarantee CONFIG_KSU_SUSFS=y,
+          # but obj-y avoids a silent empty-object link failure if it gets dropped.
           sed -i 's/obj-$(CONFIG_KSU_SUSFS) += susfs.o/obj-y += susfs.o/' fs/Makefile
           grep -q 'susfs\.o' fs/Makefile || echo 'obj-y += susfs.o' >> fs/Makefile
 
       - name: Configure kernel
+        env:
+          MAKE_ARGS: >-
+            ARCH=arm64
+            CROSS_COMPILE=aarch64-linux-gnu-
+            LLVM=1 LLVM_IAS=1
+            LD=ld.lld HOSTLD=ld.lld
+            CC=clang CXX=clang++
+            O=out
         run: |
           cd kernel
           DEFCONFIG="./arch/arm64/configs/${{ inputs.kernel_defconfig || 'gki_defconfig' }}"
@@ -130,10 +140,8 @@ jobs:
             done
           fi
 
-          # KernelSU
+          # Seed KSU/SUSFS options into defconfig (scripts/config below is the real authority)
           echo "CONFIG_KSU=y" >> "$DEFCONFIG"
-
-          # SUSFS 2.0.0+
           if [ "${{ matrix.susfs }}" = "true" ]; then
             echo "CONFIG_KSU_SUSFS=y" >> "$DEFCONFIG"
             echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> "$DEFCONFIG"
@@ -147,6 +155,40 @@ jobs:
             echo "CONFIG_KSU_SUSFS_SUS_MAP=y" >> "$DEFCONFIG"
           else
             echo "CONFIG_KSU_SUSFS=n" >> "$DEFCONFIG"
+          fi
+
+          # Generate initial .config from defconfig
+          make $MAKE_ARGS "${{ inputs.kernel_defconfig || 'gki_defconfig' }}"
+
+          # Force-set configs via scripts/config so Kconfig cannot silently drop them
+          KCFG="./scripts/config --file out/.config"
+          $KCFG -e KSU
+          if [ "${{ matrix.susfs }}" = "true" ]; then
+            $KCFG -e KSU_SUSFS
+            $KCFG -e KSU_SUSFS_SUS_PATH
+            $KCFG -e KSU_SUSFS_SUS_MOUNT
+            $KCFG -e KSU_SUSFS_SUS_KSTAT
+            $KCFG -e KSU_SUSFS_SPOOF_UNAME
+            $KCFG -e KSU_SUSFS_ENABLE_LOG
+            $KCFG -e KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+            $KCFG -e KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+            $KCFG -e KSU_SUSFS_OPEN_REDIRECT
+            $KCFG -e KSU_SUSFS_SUS_MAP
+          else
+            $KCFG -d KSU_SUSFS
+          fi
+
+          # Resolve dependencies without dropping our forced configs
+          make $MAKE_ARGS olddefconfig
+
+          # Verify critical configs survived
+          echo "--- Config verification ---"
+          grep -E 'CONFIG_KSU=|CONFIG_KSU_SUSFS=' out/.config || true
+          if [ "${{ matrix.susfs }}" = "true" ]; then
+            if ! grep -q 'CONFIG_KSU_SUSFS=y' out/.config; then
+              echo "ERROR: CONFIG_KSU_SUSFS=y missing from final .config!"
+              exit 1
+            fi
           fi
 
           # Remove -dirty suffix
@@ -168,15 +210,6 @@ jobs:
           # Reduce parallel jobs to prevent memory exhaustion
           JOBS=$(( $(nproc) / 2 ))
           [ "$JOBS" -lt 1 ] && JOBS=1
-
-          make -j$JOBS \
-            ARCH=arm64 \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            LLVM=1 LLVM_IAS=1 \
-            LD=ld.lld HOSTLD=ld.lld \
-            CC=clang CXX=clang++ \
-            O=out \
-            "${{ inputs.kernel_defconfig || 'gki_defconfig' }}"
 
           make -j$JOBS \
             ARCH=arm64 \
