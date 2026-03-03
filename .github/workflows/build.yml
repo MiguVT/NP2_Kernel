@@ -177,6 +177,10 @@ jobs:
             O=out \
             "${{ inputs.kernel_defconfig || 'gki_defconfig' }}"
 
+          # Verify critical configs survived defconfig processing
+          echo "--- Checking .config for KSU/SUSFS symbols ---"
+          grep -E 'CONFIG_KSU|CONFIG_KSU_SUSFS' out/.config || true
+
           make -j$JOBS \
             ARCH=arm64 \
             CROSS_COMPILE=aarch64-linux-gnu- \
