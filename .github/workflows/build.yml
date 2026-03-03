@@ -140,10 +140,22 @@ jobs:
           # Remove -dirty suffix
           [ -f scripts/setlocalversion ] && sed -i 's/-dirty//g' scripts/setlocalversion || true
 
+      - name: Enable swap space
+        run: |
+          # Create a 2GB swap file
+          sudo fallocate -l 2G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
       - name: Build kernel
         run: |
           cd kernel
-          make -j$(nproc) \
+          # Reduce parallel jobs to prevent memory exhaustion
+          JOBS=$(( $(nproc) / 2 ))
+          [ "$JOBS" -lt 1 ] && JOBS=1
+
+          make -j$JOBS \
             ARCH=arm64 \
             CROSS_COMPILE=aarch64-linux-gnu- \
             LLVM=1 LLVM_IAS=1 \
@@ -152,7 +164,7 @@ jobs:
             O=out \
             "${{ inputs.kernel_defconfig || 'gki_defconfig' }}"
 
-          make -j$(nproc) \
+          make -j$JOBS \
             ARCH=arm64 \
             CROSS_COMPILE=aarch64-linux-gnu- \
             LLVM=1 LLVM_IAS=1 \
@@ -160,6 +172,11 @@ jobs:
             CC=clang CXX=clang++ \
             KCFLAGS="-Wno-error" \
             O=out
+
+      - name: Disable swap space
+        run: |
+          sudo swapoff /swapfile
+          sudo rm /swapfile
 
       - name: Package AnyKernel3
         run: |
@@ -208,3 +225,10 @@ jobs:
         with:
           name: rej-NP2-${{ matrix.variant }}
           path: rej/
+
+      - name: Cleanup workspace
+        if: always()
+        run: |
+          # Clean up temporary files to ensure a clean workspace
+          sudo rm -rf kernel susfs4ksu AnyKernel3 /swapfile
+          sudo apt-get clean
