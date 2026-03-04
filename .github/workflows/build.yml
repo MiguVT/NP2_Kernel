@@ -190,6 +190,10 @@ jobs:
               exit 1
             fi
           fi
+          # Fail-safe: these MUST match stock or vendor modules won't load
+          if grep -q 'CONFIG_DEBUG_FS=y' out/.config; then
+            echo "WARNING: CONFIG_DEBUG_FS=y survived — vendor/debugfs.config was overridden!"
+          fi
 
           # Remove -dirty suffix
           [ -f scripts/setlocalversion ] && sed -i 's/-dirty//g' scripts/setlocalversion || true
@@ -251,6 +255,14 @@ jobs:
           name: kernel-NP2-${{ matrix.variant }}
           path: "*.zip"
           retention-days: 30
+
+      - name: Upload .config for debugging
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: config-NP2-${{ matrix.variant }}
+          path: kernel/out/.config
+          retention-days: 1
 
       - name: Collect .rej files
         if: always()
