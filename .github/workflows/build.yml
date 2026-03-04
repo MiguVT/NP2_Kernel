@@ -26,7 +26,7 @@ on:
         description: 'Extra config fragments to merge (space-separated, relative to arch/arm64/configs/)'
         required: false
         type: string
-        default: 'vendor/waipio_GKI.config vendor/nothing/waipio_GKI.config'
+        default: 'vendor/waipio_GKI.config vendor/nothing/waipio_GKI.config vendor/debugfs.config'
 
   workflow_call:
     inputs:
@@ -45,7 +45,7 @@ on:
       extra_configs:
         required: false
         type: string
-        default: 'vendor/waipio_GKI.config vendor/nothing/waipio_GKI.config'
+        default: 'vendor/waipio_GKI.config vendor/nothing/waipio_GKI.config vendor/debugfs.config'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -140,15 +140,6 @@ jobs:
             done
           fi
 
-          # ── GKI module-compat: prevent vendor-module CRC / signature mismatches ──
-          # KSU & SUSFS modify exported symbols → CRCs change → vendor modules
-          # (display, modem, storage …) refuse to load → bootloop.
-          echo "CONFIG_MODVERSIONS=n"       >> "$DEFCONFIG"
-          echo "CONFIG_MODULE_SIG_FORCE=n"  >> "$DEFCONFIG"
-          echo "CONFIG_MODULE_FORCE_LOAD=y" >> "$DEFCONFIG"
-          echo "CONFIG_TRIM_UNUSED_KSYMS=n" >> "$DEFCONFIG"
-          echo "CONFIG_UNUSED_SYMBOLS=y"    >> "$DEFCONFIG"
-
           # Seed KSU/SUSFS options into defconfig (scripts/config below is the real authority)
           echo "CONFIG_KSU=y" >> "$DEFCONFIG"
           if [ "${{ matrix.susfs }}" = "true" ]; then
@@ -171,14 +162,6 @@ jobs:
 
           # Force-set configs via scripts/config so Kconfig cannot silently drop them
           KCFG="./scripts/config --file out/.config"
-
-          # ── GKI module-compat (critical for boot) ──
-          $KCFG -d MODVERSIONS
-          $KCFG -d MODULE_SIG_FORCE
-          $KCFG -e MODULE_FORCE_LOAD
-          $KCFG -d TRIM_UNUSED_KSYMS
-          $KCFG -e UNUSED_SYMBOLS
-
           $KCFG -e KSU
           if [ "${{ matrix.susfs }}" = "true" ]; then
             $KCFG -e KSU_SUSFS
@@ -201,17 +184,11 @@ jobs:
           # Verify critical configs survived
           echo "--- Config verification ---"
           grep -E 'CONFIG_KSU=|CONFIG_KSU_SUSFS=' out/.config || true
-          grep -E 'CONFIG_MODVERSIONS|CONFIG_MODULE_SIG_FORCE|CONFIG_MODULE_FORCE_LOAD|CONFIG_TRIM_UNUSED_KSYMS' out/.config || true
           if [ "${{ matrix.susfs }}" = "true" ]; then
             if ! grep -q 'CONFIG_KSU_SUSFS=y' out/.config; then
               echo "ERROR: CONFIG_KSU_SUSFS=y missing from final .config!"
               exit 1
             fi
-          fi
-          # Fail-safe: MODVERSIONS must be off or vendor modules won't load
-          if grep -q 'CONFIG_MODVERSIONS=y' out/.config; then
-            echo "ERROR: CONFIG_MODVERSIONS is still enabled — will cause bootloop!"
-            exit 1
           fi
 
           # Remove -dirty suffix
@@ -254,15 +231,6 @@ jobs:
           # Copy kernel image
           cp kernel/out/arch/arm64/boot/Image AnyKernel3/
           cp kernel/out/arch/arm64/boot/Image.gz AnyKernel3/ 2>/dev/null || true
-
-          # Copy DTBs if the build produced any (safety net for GKI boot chain)
-          if ls kernel/out/arch/arm64/boot/dts/vendor/qcom/*.dtb 1>/dev/null 2>&1; then
-            mkdir -p AnyKernel3/dtb
-            cp kernel/out/arch/arm64/boot/dts/vendor/qcom/*.dtb AnyKernel3/dtb/
-            echo "Copied DTBs to AnyKernel3/dtb/"
-          fi
-          # Copy concatenated Image.gz-dtb if present
-          cp kernel/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/ 2>/dev/null || true
 
           # Copy anykernel.sh from repo and set variant kernel string
           cp Scripts/anykernel.sh AnyKernel3/anykernel.sh
