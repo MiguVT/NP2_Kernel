@@ -140,30 +140,11 @@ jobs:
             done
           fi
 
-          # Seed KSU/SUSFS options into defconfig (scripts/config below is the real authority)
-          echo "CONFIG_KSU=y" >> "$DEFCONFIG"
-          if [ "${{ matrix.susfs }}" = "true" ]; then
-            echo "CONFIG_KSU_SUSFS=y" >> "$DEFCONFIG"
-            echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> "$DEFCONFIG"
-            echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> "$DEFCONFIG"
-            echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> "$DEFCONFIG"
-            echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> "$DEFCONFIG"
-            echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> "$DEFCONFIG"
-            echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> "$DEFCONFIG"
-            echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> "$DEFCONFIG"
-            echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> "$DEFCONFIG"
-            echo "CONFIG_KSU_SUSFS_SUS_MAP=y" >> "$DEFCONFIG"
-          else
-            echo "CONFIG_KSU_SUSFS=n" >> "$DEFCONFIG"
-          fi
-
           # Generate initial .config from defconfig
           make $MAKE_ARGS "${{ inputs.kernel_defconfig || 'gki_defconfig' }}"
 
-          # Resolve dependencies without dropping our forced configs
-          make $MAKE_ARGS olddefconfig
-
-          # Apply configs after olddefconfig to ensure they are present
+          # Force-set configs via scripts/config so Kconfig cannot silently drop them
+          KCFG="./scripts/config --file out/.config"
           $KCFG -e KSU
           if [ "${{ matrix.susfs }}" = "true" ]; then
             $KCFG -e KSU_SUSFS
@@ -262,14 +243,6 @@ jobs:
           name: kernel-NP2-${{ matrix.variant }}
           path: "*.zip"
           retention-days: 30
-
-      - name: Upload .config for debugging
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: config-NP2-${{ matrix.variant }}
-          path: kernel/out/.config
-          retention-days: 1
 
       - name: Collect .rej files
         if: always()
