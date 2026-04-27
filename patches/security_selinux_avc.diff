@@ -1,5 +1,5 @@
---- security/selinux/avc.c
-+++ security/selinux/avc.c
+--- a/kernel/security/selinux/avc.c
++++ b/kernel/security/selinux/avc.c
 @@ -736,11 +742,24 @@ static void avc_audit_post_callback(struct audit_buffer *ab, void *a)
  
  	rc = security_sid_to_context(sad->state, sad->tsid, &tcontext,
