@@ -144,6 +144,7 @@ jobs:
 
           # Add ReSukiSU configs
           echo "CONFIG_KSU=y" >> "$DEFCONFIG"
+          echo "CONFIG_KPM=y" >> "$DEFCONFIG"
           echo "CONFIG_KSU_SUSFS=y" >> "$DEFCONFIG"
 
           # Generate initial .config from defconfig
