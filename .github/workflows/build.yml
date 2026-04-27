@@ -89,11 +89,6 @@ jobs:
           git clone --depth=1 -b gki-android12-5.10 \
             https://gitlab.com/simonpunk/susfs4ksu.git
 
-      - name: Apply ReSukiSU SELinux patch
-        run: |
-          cd kernel
-          patch -p1 < ../patches/security_selinux_avc.diff
-
       - name: Setup ReSukiSU
         run: |
           cd kernel
@@ -102,6 +97,9 @@ jobs:
       - name: Apply SUSFS patches
         run: |
           cd kernel
+
+          # Fix issues with avc selinux
+          patch -p1 < ../patches/security_selinux_avc.diff
 
           # Copy SUSFS source files
           cp ../susfs4ksu/kernel_patches/fs/* ./fs/
