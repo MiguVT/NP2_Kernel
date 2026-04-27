@@ -64,6 +64,7 @@ jobs:
         LD=ld.lld HOSTLD=ld.lld
         CC=clang CXX=clang++
         HOSTCC=clang HOSTCXX=clang++
+        O=out
     strategy:
       fail-fast: false
       matrix:
@@ -82,7 +83,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential bc bison flex libelf-dev libssl-dev \
-            lz4 cpio fakeroot python3 clang llvm lld gcc-aarch64-linux-gnu \
+            lz4 zip python3 clang llvm lld gcc-aarch64-linux-gnu \
             gcc-arm-linux-gnueabi
 
       - name: Clone sources
@@ -91,6 +92,10 @@ jobs:
           git clone --depth=1 -b "${{ inputs.kernel_branch || 'master' }}" \
             "${{ inputs.kernel_repo || 'https://github.com/arter97/android_kernel_nothing_sm8475.git' }}" \
             kernel
+
+          # AnyKernel3
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git
+          rm -rf AnyKernel3/.git
 
           # SUSFS (only for SUSFS variant)
           if [ "${{ matrix.susfs }}" = "true" ]; then
@@ -131,40 +136,41 @@ jobs:
             exit 1
           fi
 
-          # arter97 build flow starts from a root .config copied from defconfig
-          cp "$DEFCONFIG" .config
+          # Start from defconfig copied into out/.config (keeps old O=out workflow)
+          mkdir -p out
+          cp "$DEFCONFIG" out/.config
 
-          # Merge extra config fragments into .config (if any)
+          # Merge extra config fragments into out/.config (if any)
           EXTRA="${{ inputs.extra_configs }}"
           if [ -n "$EXTRA" ]; then
             for frag in $EXTRA; do
               FRAG_PATH="./$frag"
               if [ -f "$FRAG_PATH" ]; then
                 echo "Merging: $frag"
-                cat "$FRAG_PATH" >> .config
+                cat "$FRAG_PATH" >> out/.config
               fi
             done
           fi
 
-          # Seed KSU/SUSFS options into .config (scripts/config below is the real authority)
-          echo "CONFIG_KSU=y" >> .config
+          # Seed KSU/SUSFS options into out/.config (scripts/config below is the real authority)
+          echo "CONFIG_KSU=y" >> out/.config
           if [ "${{ matrix.susfs }}" = "true" ]; then
-            echo "CONFIG_KSU_SUSFS=y" >> .config
-            echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> .config
-            echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> .config
-            echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> .config
-            echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> .config
-            echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> .config
-            echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> .config
-            echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> .config
-            echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> .config
-            echo "CONFIG_KSU_SUSFS_SUS_MAP=y" >> .config
+            echo "CONFIG_KSU_SUSFS=y" >> out/.config
+            echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> out/.config
+            echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> out/.config
+            echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> out/.config
+            echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> out/.config
+            echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> out/.config
+            echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> out/.config
+            echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> out/.config
+            echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> out/.config
+            echo "CONFIG_KSU_SUSFS_SUS_MAP=y" >> out/.config
           else
-            echo "CONFIG_KSU_SUSFS=n" >> .config
+            echo "CONFIG_KSU_SUSFS=n" >> out/.config
           fi
 
           # Force-set configs via scripts/config so Kconfig cannot silently drop them
-          KCFG="./scripts/config --file .config"
+          KCFG="./scripts/config --file out/.config"
           $KCFG -e KSU
           if [ "${{ matrix.susfs }}" = "true" ]; then
             $KCFG -e KSU_SUSFS
@@ -186,15 +192,15 @@ jobs:
 
           # Verify critical configs survived
           echo "--- Config verification ---"
-          grep -E 'CONFIG_KSU=|CONFIG_KSU_SUSFS=' .config || true
+          grep -E 'CONFIG_KSU=|CONFIG_KSU_SUSFS=' out/.config || true
           if [ "${{ matrix.susfs }}" = "true" ]; then
-            if ! grep -q 'CONFIG_KSU_SUSFS=y' .config; then
+            if ! grep -q 'CONFIG_KSU_SUSFS=y' out/.config; then
               echo "ERROR: CONFIG_KSU_SUSFS=y missing from final .config!"
               exit 1
             fi
           fi
           # Fail-safe: these MUST match stock or vendor modules won't load
-          if grep -q 'CONFIG_DEBUG_FS=y' .config; then
+          if grep -q 'CONFIG_DEBUG_FS=y' out/.config; then
             echo "WARNING: CONFIG_DEBUG_FS=y survived — vendor/debugfs.config was overridden!"
           fi
 
@@ -220,75 +226,36 @@ jobs:
 
           make -j$JOBS $MAKE_ARGS KCFLAGS="-Wno-error"
 
-      - name: Build boot.img (arter97)
+      - name: Package AnyKernel3
         run: |
-          cd kernel
-
-          if [ ! -f arch/arm64/boot/Image.gz ]; then
-            echo "ERROR: kernel Image.gz not found — build failed"
+          # Verify build output exists
+          if [ ! -f kernel/out/arch/arm64/boot/Image ]; then
+            echo "ERROR: kernel Image not found — build failed"
             exit 1
           fi
 
-          KERNELDIR="$PWD"
-          RAMFS_SOURCE="$KERNELDIR/ramdisk"
-          RAMFS_TMP="/tmp/arter97-pong-ramdisk-${{ matrix.variant }}"
-          PARTITION_SIZE=134217728
-          OS_VERSION="12.0.0"
-          OS_PATCH_LEVEL="2023-08"
+          # Copy kernel image
+          cp kernel/out/arch/arm64/boot/Image AnyKernel3/
+          cp kernel/out/arch/arm64/boot/Image.gz AnyKernel3/ 2>/dev/null || true
 
-          if [ ! -d "$RAMFS_SOURCE" ]; then
-            echo "ERROR: ramdisk directory not found at $RAMFS_SOURCE"
-            exit 1
+          # Copy anykernel.sh from repo and set variant kernel string
+          cp Scripts/anykernel.sh AnyKernel3/anykernel.sh
+          if [ "${{ matrix.susfs }}" = "true" ]; then
+            sed -i 's/kernel.string=.*/kernel.string=NP2 Kernel - WKSU + SUSFS/' AnyKernel3/anykernel.sh
+          else
+            sed -i 's/kernel.string=.*/kernel.string=NP2 Kernel - WKSU/' AnyKernel3/anykernel.sh
           fi
 
-          echo "Building new ramdisk from $RAMFS_SOURCE"
-          rm -rf "$RAMFS_TMP" "$RAMFS_TMP.cpio" "$RAMFS_TMP.cpio.lz4"
-          cp -axpP "$RAMFS_SOURCE" "$RAMFS_TMP"
-
-          cd "$RAMFS_TMP"
-          find . -name .git -exec rm -rf {} \;
-          find . -name EMPTY_DIRECTORY -exec rm -rf {} \;
-
-          if [ -x "$KERNELDIR/ramdisk_fix_permissions.sh" ]; then
-            "$KERNELDIR/ramdisk_fix_permissions.sh" 2>/dev/null || true
-          fi
-
-          find . | fakeroot cpio -H newc -o | lz4 -l > "$RAMFS_TMP.cpio.lz4"
-
-          cd "$KERNELDIR"
-          curl -fsSL -o mkbootimg.py \
-            https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-20.0/mkbootimg.py
-
-          echo "Making new boot image"
-          python3 mkbootimg.py \
-            --kernel "$KERNELDIR/arch/arm64/boot/Image.gz" \
-            --ramdisk "$RAMFS_TMP.cpio.lz4" \
-            --pagesize 4096 \
-            --os_version "$OS_VERSION" \
-            --os_patch_level "$OS_PATCH_LEVEL" \
-            --header_version 4 \
-            -o "$KERNELDIR/boot.img"
-
-          GENERATED_SIZE=$(stat -c %s "$KERNELDIR/boot.img")
-          if [ "$GENERATED_SIZE" -gt "$PARTITION_SIZE" ]; then
-            echo "ERROR: boot.img size ($GENERATED_SIZE) larger than partition size ($PARTITION_SIZE)"
-            exit 1
-          fi
-
-          VERSION_TAG="unknown"
-          [ -f "$KERNELDIR/version" ] && VERSION_TAG="$(tr -d '\n' < "$KERNELDIR/version")"
-          ARTIFACT_NAME="arter97-kernel-${VERSION_TAG}-${{ matrix.variant }}-boot.img"
-          cp "$KERNELDIR/boot.img" "$GITHUB_WORKSPACE/$ARTIFACT_NAME"
-
-          ls -lh "$GITHUB_WORKSPACE/$ARTIFACT_NAME"
-
-          rm -f "$KERNELDIR/mkbootimg.py"
+          # Create zip
+          cd AnyKernel3
+          ZIP_NAME="${{ matrix.variant }}-NP2-Pong.zip"
+          zip -r9 "../$ZIP_NAME" ./*
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: kernel-NP2-${{ matrix.variant }}
-          path: "*.img"
+          path: "*.zip"
           retention-days: 30
 
       - name: Upload .config for debugging
@@ -296,7 +263,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: config-NP2-${{ matrix.variant }}
-          path: kernel/.config
+          path: kernel/out/.config
           retention-days: 1
 
       - name: Collect .rej files
