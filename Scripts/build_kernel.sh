@@ -77,6 +77,13 @@ if [ "${BBG_SUPPORT}" = "true" ]; then
   echo "CONFIG_BBG=y" >> "${EXTRA_CFG}"
 fi
 
+# Include DroidSpaces config fragment if present (written by droidspaces action)
+DS_CFG="${GITHUB_WORKSPACE:-..}/kernel/droidspaces.config"
+if [ -f "${DS_CFG}" ]; then
+  echo "Merging DroidSpaces config fragment"
+  cat "${DS_CFG}" >> "${EXTRA_CFG}"
+fi
+
 cat "${EXTRA_CFG}" >> out/.config
 make ${MAKE_ARGS} olddefconfig
 [ -f scripts/setlocalversion ] && sed -i 's/-dirty//g' scripts/setlocalversion || true

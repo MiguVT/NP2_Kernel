@@ -47,6 +47,11 @@ on:
         required: false
         type: boolean
         default: true
+      droidspaces_support:
+        description: 'Enable DroidSpaces-OSS support'
+        required: false
+        type: boolean
+        default: false
       susfs_force:
         description: 'Force SUSFS patch apply (ignore failures)'
         required: false
@@ -93,6 +98,10 @@ on:
         required: false
         type: boolean
         default: false
+      droidspaces_support:
+        required: false
+        type: boolean
+        default: false
       susfs_force:
         required: false
         type: boolean
@@ -133,16 +142,6 @@ jobs:
             lz4 zip python3 clang llvm lld gcc-aarch64-linux-gnu \
             gcc-arm-linux-gnueabi wget
 
-      - name: Setup LLVM toolchain path (arter97 compat)
-        if: ${{ contains(inputs.kernel_repo || '', 'arter97/android_kernel_nothing_sm8475') }}
-        run: |
-          llvm_dir=/home/arter97/android/nathan/llvm-22.1.0-x86_64/bin
-          sudo mkdir -p "$llvm_dir"
-          for tool in clang clang++ llvm-ar llvm-nm llvm-objdump llvm-objcopy llvm-readelf llvm-strip ld.lld; do
-            src=$(command -v "$tool" || true)
-            [ -n "$src" ] && sudo ln -sf "$src" "$llvm_dir/$tool"
-          done
-
       - name: Clone sources
         run: |
           git clone --depth=1 -b "${{ inputs.kernel_branch || 'lineage-23.2' }}" \
@@ -157,10 +156,10 @@ jobs:
           git clone --depth=1 -b "${{ inputs.susfs_branch || 'gki-android13-5.10' }}" \
             https://gitlab.com/simonpunk/susfs4ksu.git
 
-      - name: Setup ReSukiSU
+      - name: Setup KernelSU-Next
         run: |
           cd "$KERNEL_DIR"
-          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
 
       - name: Apply extra patches
         if: ${{ inputs.extra_patches_dir != '' }}
@@ -171,7 +170,7 @@ jobs:
             exit 1
           fi
           cd "$KERNEL_DIR"
-          find "$patch_dir" -maxdepth 1 -type f \( -name '*.patch' -o -name '*.diff' \) -print0 | sort -z | while IFS= read -r patch; do
+          find "$patch_dir" -maxdepth 1 -type f \( -name '*.patch' -o -name '*.diff' \) -print0 | sort -z | while IFS= read -r -d '' patch; do
             echo "Applying $patch"
             patch -p1 < "$patch"
           done
@@ -195,6 +194,55 @@ jobs:
           cd "$KERNEL_DIR"
           wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
           sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' security/Kconfig
+
+      - name: DroidSpaces-OSS — Clone
+        if: ${{ inputs.droidspaces_support == true }}
+        run: |
+          git clone --depth=1 https://github.com/ravindu644/Droidspaces-OSS.git
+
+      - name: DroidSpaces-OSS — Apply SYSVIPC kABI fix (5.10)
+        if: ${{ inputs.droidspaces_support == true }}
+        run: |
+          DS_PATCHES="$GITHUB_WORKSPACE/Droidspaces-OSS/Documentation/resources/kernel-patches/GKI/below-kernel-6.12"
+          cd "$KERNEL_DIR"
+          # Patch 1: SYSVIPC kABI fix (required for 5.10)
+          cp "$DS_PATCHES/001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch" ./
+          patch -p1 < 001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch
+          # Patch 2: POSIX_MQUEUE kABI fix (required for 5.10 and below)
+          cp "$DS_PATCHES/002.5.10_or_lower_use_android_abi_padding_for_posix_mqueue.patch" ./
+          patch -p1 < 002.5.10_or_lower_use_android_abi_padding_for_posix_mqueue.patch
+
+      - name: DroidSpaces-OSS — Write kernel config fragment
+        if: ${{ inputs.droidspaces_support == true }}
+        run: |
+          # GKI-safe config per https://github.com/ravindu644/Droidspaces-OSS/blob/main/Documentation/Kernel-Configuration.md
+          # DO NOT add options beyond this list — kABI breakage risk on GKI
+          cat > "$KERNEL_DIR/droidspaces.config" <<'EOF'
+          # IPC
+          CONFIG_SYSVIPC=y
+          CONFIG_POSIX_MQUEUE=y
+          # Namespaces
+          CONFIG_IPC_NS=y
+          CONFIG_PID_NS=y
+          # HW Access Support
+          CONFIG_DEVTMPFS=y
+          # Networking (Enhanced NAT support)
+          CONFIG_NETFILTER_XT_MATCH_ADDRTYPE=y
+          # Fix for docker unsafe procfs error
+          CONFIG_USER_NS=y
+          # UFW support
+          CONFIG_NETFILTER_XT_TARGET_REJECT=y
+          CONFIG_NETFILTER_XT_TARGET_LOG=y
+          CONFIG_NETFILTER_XT_MATCH_RECENT=y
+          # Fail2ban support
+          CONFIG_IP_SET=y
+          CONFIG_IP_SET_HASH_IP=y
+          CONFIG_IP_SET_HASH_NET=y
+          CONFIG_NETFILTER_XT_SET=y
+          # NixOS/tmpfs support
+          CONFIG_TMPFS_POSIX_ACL=y
+          CONFIG_TMPFS_XATTR=y
+          EOF
 
       - name: Prepare build scripts
         run: |
@@ -226,15 +274,15 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-${{ inputs.kernel_type || 'LineageOS' }}-NP2-ReSukiSU
-          path: "kernel-${{ inputs.kernel_type || 'LineageOS' }}-NP2-ReSukiSU.zip"
+          name: kernel-${{ inputs.kernel_type || 'LineageOS' }}-NP2-KSUNext
+          path: "kernel-${{ inputs.kernel_type || 'LineageOS' }}-NP2-KSUNext.zip"
           retention-days: 30
 
       - name: Upload .config for debugging
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: config-NP2-ReSukiSU
+          name: config-NP2-KSUNext
           path: kernel/out/.config
           retention-days: 1
 
@@ -257,5 +305,5 @@ jobs:
         if: always() && steps.collect_rej.outputs.found == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rej-NP2-ReSukiSU
+          name: rej-NP2-KSUNext
           path: rej/
