@@ -202,7 +202,6 @@ jobs:
           chmod +x Scripts/package_anykernel.sh
 
       - name: Enable swap space
-        if: ${{ !runner.arch || runner.name != 'PC' }}
         run: |
           sudo swapoff /swapfile 2>/dev/null || true
           sudo rm -f /swapfile
