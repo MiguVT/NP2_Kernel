@@ -111,14 +111,17 @@ jobs:
       ANYKERNEL_DIR: AnyKernel3
       DEFCONFIG: ${{ inputs.kernel_defconfig }}
       DEFCONFIG_FRAGS: ${{ inputs.extra_configs }}
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 15G
+      CCACHE_COMPRESS: 1
       MAKE_ARGS: >-
         ARCH=arm64
         CROSS_COMPILE=aarch64-linux-gnu-
         CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
         LLVM=1 LLVM_IAS=1
         LD=ld.lld HOSTLD=ld.lld
-        CC=clang CXX=clang++
-        HOSTCC=clang HOSTCXX=clang++
+        CC="ccache clang" CXX="ccache clang++"
+        HOSTCC="ccache clang" HOSTCXX="ccache clang++"
         O=out
 
     steps:
@@ -132,6 +135,21 @@ jobs:
             build-essential bc bison flex libelf-dev libssl-dev ccache \
             lz4 zip python3 clang llvm lld gcc-aarch64-linux-gnu \
             gcc-arm-linux-gnueabi wget cpio
+
+      - name: Restore CCache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ runner.os }}-${{ inputs.kernel_type || 'LineageOS' }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ inputs.kernel_type || 'LineageOS' }}-
+            ccache-${{ runner.os }}-
+
+      - name: Setup CCache
+        run: |
+          mkdir -p "$CCACHE_DIR"
+          ccache -M "$CCACHE_MAXSIZE"
+          ccache -z
 
       - name: Setup LLVM toolchain path (arter97 compat)
         if: ${{ contains(inputs.kernel_repo || '', 'arter97/android_kernel_nothing_sm8475') }}
@@ -218,6 +236,9 @@ jobs:
           SUSFS_SUPPORT="${{ inputs.susfs_support }}" \
           BBG_SUPPORT="${{ inputs.bbg_support }}" \
           Scripts/build_kernel.sh
+
+      - name: CCache Stats
+        run: ccache -s
 
       - name: Package AnyKernel3
         run: |
