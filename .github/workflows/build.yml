@@ -42,11 +42,6 @@ on:
         required: false
         type: string
         default: ''
-      bbg_support:
-        description: 'Enable BBG support'
-        required: false
-        type: boolean
-        default: false
       susfs_force:
         description: 'Force SUSFS patch apply (ignore failures)'
         required: false
@@ -111,7 +106,7 @@ jobs:
       ANYKERNEL_DIR: AnyKernel3
       DEFCONFIG: ${{ inputs.kernel_defconfig }}
       DEFCONFIG_FRAGS: ${{ inputs.extra_configs }}
-      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_DIR: /tmp/ccache_kernel
       CCACHE_MAXSIZE: 15G
       CCACHE_COMPRESS: 1
       MAKE_ARGS: >-
@@ -120,30 +115,29 @@ jobs:
         CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
         LLVM=1 LLVM_IAS=1
         LD=ld.lld HOSTLD=ld.lld
-        CC="ccache clang" CXX="ccache clang++"
-        HOSTCC="ccache clang" HOSTCXX="ccache clang++"
+        CC=clang CXX=clang++
+        HOSTCC=clang HOSTCXX=clang++
         O=out
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install dependencies & Setup CCache
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential bc bison flex libelf-dev libssl-dev ccache \
             lz4 zip python3 clang llvm lld gcc-aarch64-linux-gnu \
             gcc-arm-linux-gnueabi wget cpio
-
-      - name: Restore CCache
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ inputs.kernel_type || 'LineageOS' }}-${{ github.sha }}
-          restore-keys: |
-            ccache-${{ runner.os }}-${{ inputs.kernel_type || 'LineageOS' }}-
-            ccache-${{ runner.os }}-
+          
+          # Force clang/gcc to pass through ccache via PATH
+          sudo mkdir -p /usr/local/bin/ccache-bin
+          sudo ln -sf $(which ccache) /usr/local/bin/ccache-bin/clang
+          sudo ln -sf $(which ccache) /usr/local/bin/ccache-bin/clang++
+          sudo ln -sf $(which ccache) /usr/local/bin/ccache-bin/gcc
+          sudo ln -sf $(which ccache) /usr/local/bin/ccache-bin/g++
+          echo "/usr/local/bin/ccache-bin" >> $GITHUB_PATH
 
       - name: Setup CCache
         run: |
@@ -245,7 +239,7 @@ jobs:
           KERNEL_TYPE="${{ inputs.kernel_type || 'LineageOS' }}" Scripts/package_anykernel.sh
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: kernel-${{ inputs.kernel_type || 'LineageOS' }}-NP2-ReSukiSU
           path: "kernel-${{ inputs.kernel_type || 'LineageOS' }}-NP2-ReSukiSU.zip"
@@ -253,7 +247,7 @@ jobs:
 
       - name: Upload .config for debugging
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: config-NP2-ReSukiSU
           path: kernel/out/.config
