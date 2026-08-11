@@ -202,6 +202,7 @@ jobs:
           chmod +x Scripts/package_anykernel.sh
 
       - name: Enable swap space
+        if: ${{ !runner.arch || runner.name != 'tu-runner-local' }}
         run: |
           sudo swapoff /swapfile 2>/dev/null || true
           sudo rm -f /swapfile
@@ -224,7 +225,7 @@ jobs:
           KERNEL_TYPE="${{ inputs.kernel_type || 'LineageOS' }}" Scripts/package_anykernel.sh
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: kernel-${{ inputs.kernel_type || 'LineageOS' }}-NP2-ReSukiSU
           path: "kernel-${{ inputs.kernel_type || 'LineageOS' }}-NP2-ReSukiSU.zip"
@@ -232,7 +233,7 @@ jobs:
 
       - name: Upload .config for debugging
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: config-NP2-ReSukiSU
           path: kernel/out/.config
@@ -255,7 +256,7 @@ jobs:
 
       - name: Upload .rej files
         if: always() && steps.collect_rej.outputs.found == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: rej-NP2-ReSukiSU
           path: rej/
