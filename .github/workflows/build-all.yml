@@ -1,9 +1,5 @@
 name: Test All Builds
 
-permissions:
-  contents: write
-  actions: write
-
 on:
   workflow_dispatch:
 
@@ -16,7 +12,11 @@ jobs:
           # Default Build (LineageOS)
           - name: LineageOS
             kernel_type: LineageOS
-
+            kernel_repo: https://github.com/LineageOS/android_kernel_nothing_sm8475.git
+            kernel_branch: lineage-23.2
+            kernel_defconfig: gki_defconfig
+            extra_configs: vendor/waipio_GKI.config vendor/nothing/waipio_GKI.config vendor/debugfs.config
+            extra_patches_dir: ''
             susfs_support: true
             bbg_support: false
             susfs_force: false
@@ -28,11 +28,10 @@ jobs:
             kernel_branch: sm8475/b/mr
             kernel_defconfig: gki_defconfig
             extra_configs: vendor/waipio_GKI.config
-            susfs_branch: gki-android13-5.10
-
-          #   susfs_support: true
-          #   bbg_support: false
-          #   susfs_force: false
+            extra_patches_dir: ''
+            susfs_support: true
+            bbg_support: false
+            susfs_force: false
 
           # # arter97 Build
           # - name: arter97
@@ -40,8 +39,8 @@ jobs:
           #   kernel_repo: https://github.com/arter97/android_kernel_nothing_sm8475
           #   kernel_branch: master
           #   kernel_defconfig: /defconfig
+          #   extra_configs: ''
           #   extra_patches_dir: patches/arter97
-
           #   susfs_support: true
           #   bbg_support: false
           #   susfs_force: false
@@ -49,11 +48,11 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       kernel_type: ${{ matrix.kernel_type }}
-      kernel_repo: ${{ matrix.kernel_repo || '' }}
-      kernel_branch: ${{ matrix.kernel_branch || 'lineage-23.2' }}
-      kernel_defconfig: ${{ matrix.kernel_defconfig || 'gki_defconfig' }}
-      extra_configs: ${{ matrix.extra_configs || '' }}
-      extra_patches_dir: ${{ matrix.extra_patches_dir || '' }}
+      kernel_repo: ${{ matrix.kernel_repo }}
+      kernel_branch: ${{ matrix.kernel_branch }}
+      kernel_defconfig: ${{ matrix.kernel_defconfig }}
+      extra_configs: ${{ matrix.extra_configs }}
+      extra_patches_dir: ${{ matrix.extra_patches_dir }}
       susfs_support: ${{ matrix.susfs_support }}
       bbg_support: ${{ matrix.bbg_support }}
       susfs_force: ${{ matrix.susfs_force }}
