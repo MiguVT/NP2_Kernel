@@ -5,7 +5,7 @@ The official source for this repository is the [GitHub repo](https://github.com/
 
 The [Releases](https://github.com/MiguVT/NP2_Kernel/releases) include builds compatible with the Nothing Phone 2, including the following kernels:
 - **LineageOS's kernel** - Recommended for LineageOS or similar custom ROMs.
-> Im currently working to give Nothing official kernel support and also arter97's kernel
+> Im currently working to give Nothing official kernel support and also arter97's kernel, Pull Requests are welcome
 
 ## Features
 
