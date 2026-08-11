@@ -46,7 +46,7 @@ on:
         description: 'Enable BBG support'
         required: false
         type: boolean
-        default: true
+        default: false
       susfs_force:
         description: 'Force SUSFS patch apply (ignore failures)'
         required: false

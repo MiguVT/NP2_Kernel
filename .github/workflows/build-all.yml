@@ -18,20 +18,20 @@ jobs:
             kernel_type: LineageOS
 
             susfs_support: true
-            bbg_support: true
+            bbg_support: false
             susfs_force: false
 
-          # # NothingOSS Build
-          # - name: NothingOSS
-          #   kernel_type: NothingOSS
-          #   kernel_repo: https://github.com/NothingOSS/android_kernel_msm-5.10_nothing_sm8475.git
-          #   kernel_branch: sm8475/b/mr
-          #   kernel_defconfig: gki_defconfig
-          #   extra_configs: vendor/waipio_GKI.config
-          #   susfs_branch: gki-android13-5.10
+          # NothingOSS Build
+          - name: NothingOSS
+            kernel_type: NothingOSS
+            kernel_repo: https://github.com/NothingOSS/android_kernel_msm-5.10_nothing_sm8475.git
+            kernel_branch: sm8475/b/mr
+            kernel_defconfig: gki_defconfig
+            extra_configs: vendor/waipio_GKI.config
+            susfs_branch: gki-android13-5.10
 
           #   susfs_support: true
-          #   bbg_support: true
+          #   bbg_support: false
           #   susfs_force: false
 
           # # arter97 Build
