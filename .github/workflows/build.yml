@@ -131,7 +131,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential bc bison flex libelf-dev libssl-dev ccache \
             lz4 zip python3 clang llvm lld gcc-aarch64-linux-gnu \
-            gcc-arm-linux-gnueabi wget
+            gcc-arm-linux-gnueabi wget cpio
 
       - name: Setup LLVM toolchain path (arter97 compat)
         if: ${{ contains(inputs.kernel_repo || '', 'arter97/android_kernel_nothing_sm8475') }}
