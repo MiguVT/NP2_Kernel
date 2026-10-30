@@ -83,4 +83,4 @@ make ${MAKE_ARGS} olddefconfig
 
 JOBS=$(( $(nproc) / 2 ))
 [ "${JOBS}" -lt 1 ] && JOBS=1
-make -j"${JOBS}" ${MAKE_ARGS} Image KCFLAGS="-Wno-error"
+make -j"${JOBS}" ${MAKE_ARGS} Image
