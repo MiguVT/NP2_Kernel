@@ -7,11 +7,11 @@
 - Improvements on anykernel3 script
 
 ## Changes
-- Removed KPM Support (Dropped by ReSukiSU and the patching was tricky)
+- Removed KPM Support (Dropped by BakaSU and the patching was tricky)
 
 > Updates not listed here are because there wasn't changes on the workflow, only updated upstream.
 
-## v3.0.4 - The ReSukiSU Improvement (May.1 2026)
+## v3.0.4 - The BakaSU Improvement (May.1 2026)
 
 ### New
 - Fully support KPM

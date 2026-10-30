@@ -43,7 +43,7 @@ on:
         type: string
         default: ""
       bbg_support:
-        description: "Enable BBG support (Warning: May bootloop with ReSukiSU/SUSFS)"
+        description: "Enable BBG support (Warning: May bootloop with BakaSU/SUSFS)"
         required: false
         type: boolean
         default: false
@@ -175,10 +175,10 @@ jobs:
           git clone --depth=1 -b "${{ inputs.susfs_branch || 'gki-android13-5.10' }}" \
             https://gitlab.com/simonpunk/susfs4ksu.git
 
-      - name: Setup ReSukiSU
+      - name: Setup BakaSU
         run: |
           cd "$KERNEL_DIR"
-          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
+          curl -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash
 
       - name: Apply extra patches
         if: ${{ inputs.extra_patches_dir != '' }}
@@ -247,15 +247,15 @@ jobs:
       - name: Upload artifact
         uses: ${{ env.UPLOAD_ARTIFACT_ACTION }}
         with:
-          name: kernel-${{ inputs.kernel_type || 'LineageOS' }}-NP2-ReSukiSU
-          path: "kernel-${{ inputs.kernel_type || 'LineageOS' }}-NP2-ReSukiSU.zip"
+          name: kernel-${{ inputs.kernel_type || 'LineageOS' }}-NP2-BakaSU
+          path: "kernel-${{ inputs.kernel_type || 'LineageOS' }}-NP2-BakaSU.zip"
           retention-days: 30
 
       - name: Upload .config for debugging
         if: always()
         uses: ${{ env.UPLOAD_ARTIFACT_ACTION }}
         with:
-          name: config-NP2-ReSukiSU
+          name: config-NP2-BakaSU
           path: kernel/out/.config
           retention-days: 1
 
@@ -278,5 +278,5 @@ jobs:
         if: always() && steps.collect_rej.outputs.found == 'true'
         uses: ${{ env.UPLOAD_ARTIFACT_ACTION }}
         with:
-          name: rej-NP2-ReSukiSU
+          name: rej-NP2-BakaSU
           path: rej/
