@@ -53,7 +53,7 @@ on:
         type: boolean
         default: false
       kernel_type:
-        description: "Kernel type identifier (arter97, NothingOSS, LineageOS)"
+        description: "Kernel type identifier (NothingOSS, LineageOS)"
         required: false
         type: string
         default: "LineageOS"
@@ -151,15 +151,6 @@ jobs:
           ccache -M "$CCACHE_MAXSIZE"
           ccache -z
 
-      - name: Setup LLVM toolchain path (arter97 compat)
-        if: ${{ contains(inputs.kernel_repo || '', 'arter97/android_kernel_nothing_sm8475') }}
-        run: |
-          llvm_dir=/home/arter97/android/nathan/llvm-22.1.0-x86_64/bin
-          sudo mkdir -p "$llvm_dir"
-          for tool in clang clang++ llvm-ar llvm-nm llvm-objdump llvm-objcopy llvm-readelf llvm-strip ld.lld; do
-            src=$(command -v "$tool" || true)
-            [ -n "$src" ] && sudo ln -sf "$src" "$llvm_dir/$tool"
-          done
 
       - name: Clone sources
         run: |

@@ -33,17 +33,6 @@ jobs:
             bbg_support: false
             susfs_force: false
 
-          # # arter97 Build
-          # - name: arter97
-          #   kernel_type: arter97
-          #   kernel_repo: https://github.com/arter97/android_kernel_nothing_sm8475
-          #   kernel_branch: master
-          #   kernel_defconfig: /defconfig
-          #   extra_configs: ''
-          #   extra_patches_dir: patches/arter97
-          #   susfs_support: true
-          #   bbg_support: false
-          #   susfs_force: false
 
     uses: ./.github/workflows/build.yml
     with:
