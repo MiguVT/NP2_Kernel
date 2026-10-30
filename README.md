@@ -41,6 +41,8 @@ Except for the _main_ branch, all other branches are testing branches. Unless re
 
 > **Warning:** Backup your stock boot image first. Bootloader must be unlocked. Use at your own risk.
 
+> ⚠️ **Stock Nothing OS users:** Builds are currently known to **bootloop on stock Nothing OS** (see [issue #6](https://github.com/MiguVT/NP2_Kernel/issues/6)). The maintainer does not have a stock-ROM device to test/fix this. PRs with a working build or debugging info are welcome.
+
 BakaSU provides the following two installation methods:
 
 ### LKM Installation
